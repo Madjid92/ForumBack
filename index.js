@@ -32,9 +32,7 @@ app.post('/login', (req, res) => {
     if(!(login && password)) 
       return res.status(400).send({msg : "your request not contain login or password"});
     const fnd = users.find( e  => password === e.password && login === e.login);
-    //@TODO create hash value usin user+password+expirationDta
-    //add to session tocken(hash) as key and login/experation as value
-    // return hash token           
+             
     if(!fnd) return res.status(401).send("unaurized");
     
     const experationDate = new Date();
@@ -75,7 +73,9 @@ app.get('/messages', (req, res) => {
   const {authorization} = req.headers;
   const login = checkAuthorization(authorization);
   if(!login) return res.status(401).send("unauthorized");
-  return res.status(200).send(msgs)
+  const {dateAfterTs} = req.query;
+  const respMsgs = (dateAfterTs) ? msgs.filter(m => m.date > dateAfterTs) : msgs;
+  return res.status(200).send(respMsgs)
 });
 
 app.listen(port, () => {
