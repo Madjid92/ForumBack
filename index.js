@@ -2,8 +2,37 @@ import express from 'express';
 import bodyParser from  'body-parser';
 import crypto from 'crypto';
 import cors from 'cors';
-
+import http from 'http';
+import {Server as Socket} from 'socket.io'
 const app = express();
+
+const server = http.createServer(app);
+const io = new Socket(server, {
+  cors : {
+    origin : "*"
+  }
+});
+
+const socketManager = () =>{
+  let socket ;
+  return {
+    set : (sct) => { socket = sct},
+    get : () => socket
+  }
+
+}
+
+const socket = socketManager();
+
+io.on('connection', (inputSocket) => {
+  console.log('user connected');
+  socket.set(inputSocket);
+  /*socket.get().on('disconnect', function () {
+    console.log('user disconnected');
+  });*/
+})
+
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json() ); 
 app.use(cors({origin : "*"}));
@@ -50,8 +79,7 @@ const checkAuthorization = (authorization) =>{
   if(!userData) return false;
   const { login, experationDate} = userData;
   if(experationDate < Date.now() ) return false;
-  return login; 
-
+  return login;
 }
 
 app.post('/messages/send', (req, res) => {
@@ -65,7 +93,9 @@ app.post('/messages/send', (req, res) => {
   const {msg} = req.body;
   console.debug(`msg : ${msg}`);
   if(!msg)  return res.status(400).send("no message");
-  msgs.push({login , date : Date.now(), content : msg});
+  const objMsg = {login , date : Date.now(), content : msg}
+  msgs.push(objMsg);
+  socket.get().emit("message", objMsg);
   return res.status(204).send()
 });
 
@@ -78,6 +108,6 @@ app.get('/messages', (req, res) => {
   return res.status(200).send(respMsgs)
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 });
