@@ -96,6 +96,7 @@ app.post('/messages/send', (req, res) => {
   const objMsg = {login , date : Date.now(), content : msg}
   msgs.push(objMsg);
   socket.get().emit("message", objMsg);
+  socket.get().broadcast.emit("message", objMsg);
   return res.status(204).send()
 });
 
