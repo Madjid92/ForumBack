@@ -4,7 +4,9 @@ import crypto from 'crypto';
 import cors from 'cors';
 import http from 'http';
 import {Server as Socket} from 'socket.io';
-import {initDB, insertMessage, selectMessages} from './DbManager.js';
+import process from 'node:process';
+import {PoolConfig, initDB, insertMessage, selectMessages} from './DbManager.js';
+
 
 const app = express();
 
@@ -53,7 +55,7 @@ const users = [
 ]
 const session = {};
 
-const msgs = [];
+
 
 app.post('/login', async (req, res) => {
     const {login , password} = req.body;
@@ -88,13 +90,13 @@ app.post('/messages/send', async (req, res) => {
   console.debug(`authorization : ${authorization}`);
   const login = checkAuthorization(authorization);
   console.debug(`login : ${login}`);
-  if(!login) return res.status(401).send("unauthorized");
+  if(!login) return res.status(401).send("unauthorized"); 
+
   console.log("req.body :", req.body)
   const {msg} = req.body;  
   console.debug(`msg : ${msg}`);
   if(!msg)  return res.status(400).send("no message");
   const objMsg = {login , date : Date.now(), content : msg}
-  msgs.push(objMsg);
   socket.get().emit("message", objMsg);
   socket.get().broadcast.emit("message", objMsg);
   const {content,date} = objMsg;
@@ -103,21 +105,40 @@ app.post('/messages/send', async (req, res) => {
 });
 
 app.get('/messages', async (req, res) => {
+  console.log('on get messages msgs ...');
   const {authorization} = req.headers;
-  console.log('in get messages :', msgs.length);
   const login = checkAuthorization(authorization);
-
+  console.log('on get messages msgs checkAuthorization', )
   if(!login) return res.status(401).send("unauthorized");
   console.log("authorizantion done ...");
   //const {dateAfterTs} = req.query;
   //const respMsgs = (dateAfterTs) ? msgs.filter(m => m.date > dateAfterTs) : msgs;
   const respMsgs = await selectMessages();
-  console.log('get messages/send msgs :', respMsgs.length);
+  console.log('get messages msgs :', respMsgs.length);
   return res.status(200).send(respMsgs)
 });
 
 server.listen(port, async() => {
   await initDB();
+  await PoolConfig.getPool();
+  // init pool
   console.log(`Example app listening on port ${port}`)
 });
+
+
+const cleanPool =  async (code) =>  {
+  console.log('clean DB Pool ...');
+  await PoolConfig.endPool();
+}
+
+
+process.on('exit',cleanPool);
+// catches ctrl+c event
+process.on('SIGINT', cleanPool);
+// catches "kill pid" (for example: nodemon restart)
+process.on('SIGUSR1',cleanPool);
+process.on('SIGUSR2',cleanPool);;
+// catches uncaught exceptions
+process.on('uncaughtException',cleanPool);
+
 
