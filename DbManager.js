@@ -1,9 +1,11 @@
 //import { json } from 'body-parser';
+import crypto from 'crypto';
 import pg from 'pg';
 const { Pool, Client } = pg;
 
 export const DB_NAME = "chatdb1";
 export const MSG_TABLE = "messages";
+export const USERS_TABLE = "users"
 
 
 export class PoolConfig {
@@ -41,7 +43,6 @@ export class PoolConfig {
         this.client = undefined;
     }
 
-
     static async endPool() {
         if(!this.pool){
             return;
@@ -51,8 +52,6 @@ export class PoolConfig {
     }
 
 };
-
-
 
 /*
 const CONFIG_DB_HOST = {
@@ -87,12 +86,13 @@ const createDb = async () => {
     }
 }
 
-const createTable = async (tableName) => {
+const createTable = async (tableName1,tableName2) => {
     try {
         const pool = await PoolConfig.getPool();
-        console.log(`awaiting to Create Table ${tableName} `);
-        await pool.query(`CREATE TABLE ${tableName}(name varchar,message varchar,sendTime bigint,token varchar)`);
-        console.log(`Table ${tableName} created with success `);
+        console.log(`awaiting to Create Tables ${tableName1} and ${tableName2} `);
+        await pool.query(`CREATE TABLE ${tableName1}(login varchar PRIMARY KEY NOT NULL, firstName varchar, lastName varchar, password varchar, email varchar UNIQUE)`);
+        await pool.query(`CREATE TABLE ${tableName2}(login varchar REFERENCES ${tableName1}(login), message varchar, sendTime bigint)`);
+        console.log(`Tables ${tableName1} and ${tableName2} created with success `);
         return true
     } catch (e) {
         console.error(e);
@@ -106,14 +106,14 @@ const createTable = async (tableName) => {
 export const initDB = async () => {
     const isCreate = await createDb();
     if (isCreate) {
-        await createTable(MSG_TABLE)
+        await createTable(USERS_TABLE,MSG_TABLE)
     }
 }
 
-export const insertMessage = async (login, content, date, token) => {
+export const insertMessage = async (login, content, date) => {
     try {
         const pool = await PoolConfig.getPool();
-        await pool.query(`INSERT INTO ${MSG_TABLE} VALUES ('${login}', '${content}', '${date}', '${token}')`);
+        await pool.query(`INSERT INTO ${MSG_TABLE} VALUES ('${login}', '${content}', '${date}')`);
         return true;
     } catch (e) {
         console.log(e)
@@ -129,7 +129,7 @@ export const selectMessages = async () => {
         const query = {
             // give the query a unique name
             name: 'fetch-user',
-            text: `SELECT name as login, sendtime as date, message as content FROM ${MSG_TABLE}`,
+            text: `SELECT login as login, sendtime as date, message as content FROM ${MSG_TABLE}`,
             //values: [1],
           };
         const pool = await PoolConfig.getPool();
@@ -147,3 +147,36 @@ export const selectMessages = async () => {
     }*/
 };
 
+export const insertUser = async(firstName, lastName, login , hashPwd, email)=>{
+    try {
+        const pool = await PoolConfig.getPool();
+        await pool.query(`INSERT INTO ${USERS_TABLE} VALUES ('${login}', '${firstName}', '${lastName}', '${hashPwd}', '${email}')`);
+        return true;
+    } catch (e) {
+        console.log(e)
+    } /*finally {
+        await dbConnect.end();
+        console.log("disconnect when user inserted");
+    }*/
+};
+
+export const getUsers = async()=>{
+    try {
+        const query = {
+            name: 'fetch-users',
+            text: `SELECT login as login, password as password FROM ${USERS_TABLE}`,
+          };
+        const pool = await PoolConfig.getPool();
+        const resp = await pool.query(query);
+        const users = (resp.rows);
+        console.log("get users getUsers : ", users.length);
+        console.log(users);
+        return users;
+    } catch (e) {
+        console.log(e)
+    } /*finally {
+        console.log("=====>>");
+        await dbConnect.end();
+        console.log("disconnect when message inserted");
+    }*/
+}

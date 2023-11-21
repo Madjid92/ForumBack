@@ -5,7 +5,7 @@ import cors from 'cors';
 import http from 'http';
 import {Server as Socket} from 'socket.io';
 import process from 'node:process';
-import {PoolConfig, initDB, insertMessage, selectMessages} from './DbManager.js';
+import {PoolConfig, initDB, insertMessage, selectMessages, insertUser, getUsers} from './DbManager.js';
 
 
 const app = express();
@@ -49,20 +49,16 @@ app.get('/', (req, res) => {
   return;
 })
 
-const users = [
-    {login : "madjid" , password: "123"},
-    {login : "amine", password :"125"}
-]
+const users = await getUsers();
 const session = {};
-
-
 
 app.post('/login', async (req, res) => {
     const {login , password} = req.body;
-    if(!(login && password)) 
+    if(!(login && password))
     
     return res.status(400).send({msg : "your request not contain login or password"});
-    const fnd = users.find( e  => password === e.password && login === e.login);
+    const passwordHash = crypto.createHash('sha1').update(password).digest('hex');
+    const fnd = await users.find( e  => passwordHash === e.password && login === e.login);
              
     if(!fnd) return res.status(401).send("unaurized");
     
@@ -90,7 +86,7 @@ app.post('/messages/send', async (req, res) => {
   console.debug(`authorization : ${authorization}`);
   const login = checkAuthorization(authorization);
   console.debug(`login : ${login}`);
-  if(!login) return res.status(401).send("unauthorized"); 
+  if(!login) return res.status(401).send("unauthorized");
 
   console.log("req.body :", req.body)
   const {msg} = req.body;  
@@ -100,7 +96,7 @@ app.post('/messages/send', async (req, res) => {
   socket.get().emit("message", objMsg);
   socket.get().broadcast.emit("message", objMsg);
   const {content,date} = objMsg;
-  await insertMessage(login,content, date,authorization);
+  await insertMessage(login,content, date);
   return res.status(204).send()
 });
 
@@ -118,6 +114,16 @@ app.get('/messages', async (req, res) => {
   return res.status(200).send(respMsgs)
 });
 
+app.post('/inscription', async (req, res) => {
+  const {firstName, lastName, login , password, email} = req.body;
+  if(!(firstName && lastName && login && password && email))
+  return res.status(400).send({msg : "your request are not completed"});
+  const hashPwd = crypto.createHash('sha1').update(password).digest('hex');
+  //console.log(hashPwd);
+  await insertUser(firstName, lastName, login , hashPwd, email);
+  return res.status(200).send('user added !')
+})
+
 server.listen(port, async() => {
   await initDB();
   await PoolConfig.getPool();
@@ -129,8 +135,7 @@ server.listen(port, async() => {
 const cleanPool =  async (code) =>  {
   console.log('clean DB Pool ...');
   await PoolConfig.endPool();
-}
-
+};
 
 process.on('exit',cleanPool);
 // catches ctrl+c event
@@ -140,5 +145,4 @@ process.on('SIGUSR1',cleanPool);
 process.on('SIGUSR2',cleanPool);;
 // catches uncaught exceptions
 process.on('uncaughtException',cleanPool);
-
 
