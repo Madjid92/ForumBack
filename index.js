@@ -5,6 +5,7 @@ import cors from 'cors';
 import http from 'http';
 import {Server as Socket} from 'socket.io';
 import process from 'node:process';
+import jsonwebtoken from 'jsonwebtoken';
 import {PoolConfig, initDB, insertMessage, selectMessages, insertUser, getUsers} from './DbManager.js';
 
 
@@ -17,6 +18,8 @@ const io = new Socket(server, {
   }
 });
 
+const jwt = jsonwebtoken;
+const secretSign = "jsonwebtokenSecret";
 
 const socketManager = () =>{
   let socket ;
@@ -24,7 +27,7 @@ const socketManager = () =>{
     set : (sct) => { socket = sct},
     get : () => socket
   }
-}
+};
 
 const socket = socketManager();
 
@@ -34,7 +37,7 @@ io.on('connection', (inputSocket) => {
   /*socket.get().on('disconnect', function () {
     console.log('user disconnected');
   });*/
-})
+});
 
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -47,7 +50,7 @@ app.get('/', (req, res) => {
   console.log(req.params);
   res.status(200).send('Hello World!');
   return;
-})
+});
 
 const users = await getUsers();
 const session = {};
@@ -63,22 +66,24 @@ app.post('/login', async (req, res) => {
     if(!fnd) return res.status(401).send("unaurized");
     
     const experationDate = new Date();
-    experationDate.setSeconds(experationDate.getSeconds()+30000)
-    const hashPwd = crypto.createHash('sha1')
-              .update(login+password+experationDate).digest('hex');
-    session[hashPwd] = {login:login, experationDate};
+    experationDate.setSeconds(experationDate.getSeconds()+300);
+    const token = jwt.sign({login,experationDate},secretSign);
+    //const hashPwd = crypto.createHash('sha1').update(login+password+experationDate).digest('hex');
+    session[token] = {login:login, experationDate};
     console.log(session);
-    return res.status(200).send({hashPwd});
+    return res.status(200).send({token});
 });
 
 const checkAuthorization = (authorization) =>{
   if(!authorization) return false;
-  const userData = session[authorization];
-  if(!userData) return false;
-  const { login, experationDate} = userData;
-  if(experationDate < Date.now() ) return false;
+  const verif = jwt.verify(authorization, secretSign);
+  console.log(verif);
+  //const userData = session[authorization];
+  //if(!userData) return false;
+  const {login} = verif;
+  if(Date.parse(verif.experationDate) < Date.now()) return false;
   return login;
-}
+};
 
 app.post('/messages/send', async (req, res) => {
   console.log("Request on end point : /messages/send");
@@ -115,14 +120,14 @@ app.get('/messages', async (req, res) => {
 });
 
 app.post('/inscription', async (req, res) => {
-  const {firstName, lastName, login , password, email} = req.body;
-  if(!(firstName && lastName && login && password && email))
+  const {first_name, last_name, login , password, email} = req.body;
+  console.log(first_name, last_name, login , password, email);
+  if(!(first_name && last_name && login && password && email))
   return res.status(400).send({msg : "your request are not completed"});
   const hashPwd = crypto.createHash('sha1').update(password).digest('hex');
-  //console.log(hashPwd);
-  await insertUser(firstName, lastName, login , hashPwd, email);
+  await insertUser(first_name, last_name, login , hashPwd, email);
   return res.status(200).send('user added !')
-})
+});
 
 server.listen(port, async() => {
   await initDB();

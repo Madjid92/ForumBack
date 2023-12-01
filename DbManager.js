@@ -84,7 +84,7 @@ const createDb = async () => {
         await PoolConfig.endClient();
         console.log(`Database  ${DB_NAME} disconnected`);
     }
-}
+};
 
 const createTable = async (tableName1,tableName2) => {
     try {
@@ -108,7 +108,7 @@ export const initDB = async () => {
     if (isCreate) {
         await createTable(USERS_TABLE,MSG_TABLE)
     }
-}
+};
 
 export const insertMessage = async (login, content, date) => {
     try {
@@ -136,7 +136,6 @@ export const selectMessages = async () => {
         const resp = await pool.query(query);
         const msgs = resp.rows;
         msgs.map((e)=>{e.date = new Date(parseInt(e.date))});
-        console.log("get message selectMessages : ", msgs.length);
         return msgs;
     } catch (e) {
         console.log(e)
