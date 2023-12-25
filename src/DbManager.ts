@@ -1,6 +1,4 @@
-//import { json } from 'body-parser';
-import crypto from 'crypto';
-import pg from 'pg';
+import pg, { DatabaseError } from 'pg';
 const { Pool, Client } = pg;
 
 export const DB_NAME = "chatdb1";
@@ -14,8 +12,8 @@ export class PoolConfig {
     static password = '1992';
     static port = 5432;
     
-    static pool = undefined;
-    static client = undefined;
+    static pool : pg.Pool = undefined;
+    static client : pg.Client = undefined;
 
     static async getPool(){
         if(!this.pool) {
@@ -73,8 +71,9 @@ const createDb = async () => {
         await dbCreateClient.query(`CREATE DATABASE ${DB_NAME} `);
         console.log(`DB ${DB_NAME} created sucess`)
         return true
-    } catch (error) {
-        if (error.code === "42P04") {
+    } catch (error ) {
+        const typedError : DatabaseError = error as DatabaseError;
+        if (typedError.code === "42P04") {
             console.log(`Database  ${DB_NAME} already exists !`);
             return false;
         }
