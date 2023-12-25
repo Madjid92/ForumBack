@@ -12,8 +12,8 @@ export class PoolConfig {
     static password = '1992';
     static port = 5432;
     
-    static pool : pg.Pool = undefined;
-    static client : pg.Client = undefined;
+    static pool : pg.Pool | undefined = undefined;
+    static client : pg.Client | undefined = undefined;
 
     static async getPool(){
         if(!this.pool) {

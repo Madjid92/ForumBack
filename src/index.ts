@@ -62,6 +62,9 @@ app.post('/login', async (req, res) => {
 
     const users = await getUsers();
     const passwordHash = crypto.createHash('sha1').update(password).digest('hex');
+    if(!users ){
+      return res.status(401).send("unaurized"); ;
+    }
     const fnd = await users.find( e  => passwordHash === e.password && login === e.login);
              
     if(!fnd) return res.status(401).send("unaurized");
@@ -115,7 +118,7 @@ app.get('/messages', async (req, res) => {
   console.log("authorizantion done ...");
   //const {dateAfterTs} = req.query;
   //const respMsgs = (dateAfterTs) ? msgs.filter(m => m.date > dateAfterTs) : msgs;
-  const respMsgs = await selectMessages();
+  const respMsgs = (await selectMessages()) || [] ;
   console.log('get messages msgs :', respMsgs.length);
   return res.status(200).send(respMsgs)
 });
