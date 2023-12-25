@@ -5,7 +5,7 @@ import cors from 'cors';
 import http from 'http';
 import {Server, Socket} from 'socket.io';
 import process from 'node:process';
-import jsonwebtoken from 'jsonwebtoken';
+import jsonwebtoken, { JwtPayload } from 'jsonwebtoken';
 import {PoolConfig, initDB, insertMessage, selectMessages, insertUser, getUsers} from './DbManager.js';
 import { Sessions } from './types.js';
 
@@ -76,17 +76,14 @@ app.post('/login', async (req, res) => {
     const token = jwt.sign({login,experationDate},secretSign);
     //const hashPwd = crypto.createHash('sha1').update(login+password+experationDate).digest('hex');
     session[token] = {login:login, experationDate};
-    console.log(session);
+    console.log("user session : ", session);
     return res.status(200).send({token});
 });
 
 const checkAuthorization = (authorization :string | undefined) =>{
   if(!authorization) return false;
-  //@TODO : check verif type
-  const verif :any = jwt.verify(authorization, secretSign);
-  console.log(verif);
-  //const userData = session[authorization];
-  //if(!userData) return false;
+  const verif : JwtPayload  = jwt.verify(authorization, secretSign) as JwtPayload;
+  console.log("payload verificatrion :", verif);
   const {login} = verif;
   if(Date.parse(verif.experationDate) < Date.now()) return false;
   return login;
@@ -124,8 +121,6 @@ app.get('/messages', async (req, res) => {
   console.log('on get messages msgs checkAuthorization', )
   if(!login) return res.status(401).send("unauthorized");
   console.log("authorizantion done ...");
-  //const {dateAfterTs} = req.query;
-  //const respMsgs = (dateAfterTs) ? msgs.filter(m => m.date > dateAfterTs) : msgs;
   const respMsgs = (await selectMessages()) || [] ;
   console.log('get messages msgs :', respMsgs.length);
   return res.status(200).send(respMsgs)
