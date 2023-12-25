@@ -52,14 +52,15 @@ app.get('/', (req, res) => {
   return;
 });
 
-const users = await getUsers();
+
 const session = {};
 
 app.post('/login', async (req, res) => {
     const {login , password} = req.body;
     if(!(login && password))
-    
     return res.status(400).send({msg : "your request not contain login or password"});
+
+    const users = await getUsers();
     const passwordHash = crypto.createHash('sha1').update(password).digest('hex');
     const fnd = await users.find( e  => passwordHash === e.password && login === e.login);
              
