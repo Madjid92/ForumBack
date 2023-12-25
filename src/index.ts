@@ -3,16 +3,17 @@ import bodyParser from  'body-parser';
 import crypto from 'crypto';
 import cors from 'cors';
 import http from 'http';
-import {Server as Socket} from 'socket.io';
+import {Server, Socket} from 'socket.io';
 import process from 'node:process';
 import jsonwebtoken from 'jsonwebtoken';
 import {PoolConfig, initDB, insertMessage, selectMessages, insertUser, getUsers} from './DbManager.js';
+import { Sessions } from './types.js';
 
 
 const app = express();
 
 const server = http.createServer(app);
-const io = new Socket(server, {
+const io = new Server(server, {
   cors : {
     origin : "*"
   }
@@ -22,9 +23,9 @@ const jwt = jsonwebtoken;
 const secretSign = "jsonwebtokenSecret";
 
 const socketManager = () =>{
-  let socket ;
+  let socket : Socket|undefined ;
   return {
-    set : (sct) => { socket = sct},
+    set : (sct :  Socket|undefined ) => { socket = sct},
     get : () => socket
   }
 };
@@ -53,7 +54,8 @@ app.get('/', (req, res) => {
 });
 
 
-const session = {};
+
+const session : Sessions= {};
 
 app.post('/login', async (req, res) => {
     const {login , password} = req.body;
@@ -78,9 +80,10 @@ app.post('/login', async (req, res) => {
     return res.status(200).send({token});
 });
 
-const checkAuthorization = (authorization) =>{
+const checkAuthorization = (authorization :string | undefined) =>{
   if(!authorization) return false;
-  const verif = jwt.verify(authorization, secretSign);
+  //@TODO : check verif type
+  const verif :any = jwt.verify(authorization, secretSign);
   console.log(verif);
   //const userData = session[authorization];
   //if(!userData) return false;
@@ -101,9 +104,14 @@ app.post('/messages/send', async (req, res) => {
   const {msg} = req.body;  
   console.debug(`msg : ${msg}`);
   if(!msg)  return res.status(400).send("no message");
-  const objMsg = {login , date : Date.now(), content : msg}
-  socket.get().emit("message", objMsg);
-  socket.get().broadcast.emit("message", objMsg);
+  const objMsg = {login , date : Date.now(), content : msg};
+
+  const sckt = socket.get();
+  if(!sckt) {
+    return res.status(500).send({connection : "connection problem on server side"}) ;
+  }
+  sckt.emit("message", objMsg);
+  sckt.broadcast.emit("message", objMsg);
   const {content,date} = objMsg;
   await insertMessage(login,content, date);
   return res.status(204).send()
@@ -141,7 +149,7 @@ server.listen(port, async() => {
 });
 
 
-const cleanPool =  async (code) =>  {
+const cleanPool =  async () =>  {
   console.log('clean DB Pool ...');
   await PoolConfig.endPool();
 };

@@ -85,7 +85,7 @@ const createDb = async () => {
     }
 };
 
-const createTable = async (tableName1,tableName2) => {
+const createTable = async (tableName1 : string ,tableName2 :string) => {
     try {
         const pool = await PoolConfig.getPool();
         console.log(`awaiting to Create Tables ${tableName1} and ${tableName2} `);
@@ -109,7 +109,7 @@ export const initDB = async () => {
     }
 };
 
-export const insertMessage = async (login, content, date) => {
+export const insertMessage = async (login :string, content : string , date : number) => {
     try {
         const pool = await PoolConfig.getPool();
         await pool.query(`INSERT INTO ${MSG_TABLE} VALUES ('${login}', '${content}', '${date}')`);
@@ -145,7 +145,7 @@ export const selectMessages = async () => {
     }*/
 };
 
-export const insertUser = async(firstName, lastName, login , hashPwd, email)=>{
+export const insertUser = async(firstName : string , lastName :string, login : string , hashPwd : string, email : string)=>{
     try {
         const pool = await PoolConfig.getPool();
         await pool.query(`INSERT INTO ${USERS_TABLE} VALUES ('${login}', '${firstName}', '${lastName}', '${hashPwd}', '${email}')`);
